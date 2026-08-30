@@ -99,10 +99,17 @@ export default {
           ) => {
             const field = fieldByName.get(framerFieldName.toLowerCase())
 
-            if (!field) return
-            if (type !== "boolean" && !hasValue(value)) return
+           if (!field) return
+if (type !== "boolean" && !hasValue(value)) return
 
-            fieldData[field.id] = { type, value }
+if (
+  type === "image" &&
+  !/\.(png|jpe?g|webp|gif|avif)(\?.*)?$/i.test(value as string)
+) {
+  return
+}
+
+fieldData[field.id] = { type, value }ield.id] = { type, value }
           }
 
           setField("Brand Name", "string", brand.name)
