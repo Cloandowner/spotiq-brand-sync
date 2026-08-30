@@ -9,33 +9,79 @@ export default {
       )
     }
 
-    let framer: Awaited<ReturnType<typeof connect>> | undefined
+    let framer: any
 
     try {
       const projectUrl = process.env.FRAMER_PROJECT_URL
-      const apiKey = process.env.FRAMER_API_KEY
+      const framerApiKey = process.env.FRAMER_API_KEY
+      const supabaseUrl = process.env.SUPABASE_URL
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
       if (!projectUrl) throw new Error("FRAMER_PROJECT_URL ontbreekt")
-      if (!apiKey) throw new Error("FRAMER_API_KEY ontbreekt")
+      if (!framerApiKey) throw new Error("FRAMER_API_KEY ontbreekt")
+      if (!supabaseUrl) throw new Error("SUPABASE_URL ontbreekt")
+      if (!supabaseServiceKey) {
+        throw new Error("SUPABASE_SERVICE_ROLE_KEY ontbreekt")
+      }
 
-      framer = await connect(projectUrl, apiKey)
+      const brandsResponse = await fetch(
+        `${supabaseUrl}/rest/v1/brands?select=*`,
+        {
+          headers: {
+            apikey: supabaseServiceKey,
+            Authorization: `Bearer ${supabaseServiceKey}`,
+          },
+        }
+      )
 
-      const project = await framer.getProjectInfo()
+      if (!brandsResponse.ok) {
+        throw new Error(
+          `Supabase kon brands niet lezen: ${await brandsResponse.text()}`
+        )
+      }
+
+      const brands = await brandsResponse.json()
+
+      framer = await connect(projectUrl, framerApiKey)
+
       const collections = await framer.getCollections()
+      const discoverBrands = collections.find(
+        (collection: any) => collection.name === "Discover Brands"
+      )
+
+      if (!discoverBrands) {
+        throw new Error('Framer collection "Discover Brands" niet gevonden')
+      }
+
+      const fields = await discoverBrands.getFields()
+      const existingItems = await discoverBrands.getItems()
 
       return Response.json({
         success: true,
-        project: {
-          id: project.id,
-          name: project.name,
+        mode: "read-only-preview",
+        message:
+          "Alles is alleen uitgelezen; Framer CMS is niet aangepast.",
+        supabase: {
+          brandCount: brands.length,
+          columns: Object.keys(brands[0] ?? {}),
+          brands: brands.map((brand: any) => ({
+            name: brand.name,
+            slug: brand.slug,
+          })),
         },
-        collections: collections.map((collection) => ({
-          id: collection.id,
-          name: collection.name,
-        })),
+        framer: {
+          collection: discoverBrands.name,
+          fields: fields.map((field: any) => ({
+            id: field.id,
+            name: field.name,
+            type: field.type,
+          })),
+          existingItemCount: existingItems.length,
+          existingSlugs: existingItems.map((item: any) => item.slug),
+        },
       })
     } catch (error) {
-      console.error("Framer test failed:", error)
+      console.error("Brand sync preview failed:", error)
 
       return Response.json(
         {
