@@ -1,0 +1,8 @@
+{
+  "name": "spotiq-brand-sync",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "framer-api": "latest"
+  }
+}
