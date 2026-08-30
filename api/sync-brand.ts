@@ -109,7 +109,7 @@ if (
   return
 }
 
-fieldData[field.id] = { type, value }ield.id] = { type, value }
+fieldData[field.id] = { type, value }field.id] = { type, value }
           }
 
           setField("Brand Name", "string", brand.name)
