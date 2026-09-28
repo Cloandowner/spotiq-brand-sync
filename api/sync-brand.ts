@@ -368,14 +368,67 @@ export default {
                         brand.description
                     )
 
-                    // ----------------------------------------------------
-                    // Logo
-                    // ----------------------------------------------------
+                    // ------------------------------------------------------------
+// Images
+// ------------------------------------------------------------
 
-                    setField(
-                        fieldData,
-                        "Logo",
-                        brand.logo_url
+const isValidImageUrl = (value: unknown) => {
+    if (!hasValue(value)) {
+        return false
+    }
+
+    try {
+        const url = new URL(value)
+
+        if (url.protocol !== "https:" && url.protocol !== "http:") {
+            return false
+        }
+
+        // Ignore placeholder/demo URLs
+        if (
+            url.hostname === "example.com" ||
+            url.hostname === "www.example.com"
+        ) {
+            return false
+        }
+
+        return true
+    } catch {
+        return false
+    }
+}
+
+if (isValidImageUrl(brand.logo_url)) {
+    setField(
+        fieldData,
+        "Logo",
+        brand.logo_url
+    )
+}
+
+if (isValidImageUrl(brand.image_1_url)) {
+    setField(
+        fieldData,
+        "Product 1",
+        brand.image_1_url
+    )
+}
+
+if (isValidImageUrl(brand.image_2_url)) {
+    setField(
+        fieldData,
+        "Product 2",
+        brand.image_2_url
+    )
+}
+
+if (isValidImageUrl(brand.image_3_url)) {
+    setField(
+        fieldData,
+        "Product 3",
+        brand.image_3_url
+    )
+}
                     )
 
                     // ----------------------------------------------------
