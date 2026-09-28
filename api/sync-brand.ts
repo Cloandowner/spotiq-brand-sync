@@ -46,10 +46,6 @@ export default {
             const supabaseServiceKey =
                 env?.SUPABASE_SERVICE_ROLE_KEY
 
-            // ------------------------------------------------------------
-            // Security
-            // ------------------------------------------------------------
-
             if (!syncSecret) {
                 throw new Error("SYNC_SECRET ontbreekt")
             }
@@ -63,10 +59,6 @@ export default {
                     { status: 401 }
                 )
             }
-
-            // ------------------------------------------------------------
-            // Check environment variables
-            // ------------------------------------------------------------
 
             if (!projectUrl) {
                 throw new Error("FRAMER_PROJECT_URL ontbreekt")
@@ -101,10 +93,8 @@ export default {
             )
 
             if (!brandsResponse.ok) {
-                const errorText = await brandsResponse.text()
-
                 throw new Error(
-                    `Supabase kon brands niet lezen: ${errorText}`
+                    `Supabase kon brands niet lezen: ${await brandsResponse.text()}`
                 )
             }
 
@@ -120,7 +110,7 @@ export default {
             )
 
             // ------------------------------------------------------------
-            // Find Discover Brands collection
+            // Find collection
             // ------------------------------------------------------------
 
             const collections = await framer.getCollections()
@@ -138,7 +128,7 @@ export default {
             }
 
             // ------------------------------------------------------------
-            // Get Framer fields and existing items
+            // Get fields and existing items
             // ------------------------------------------------------------
 
             const fields = await collection.getFields()
@@ -170,147 +160,284 @@ export default {
             const synced: string[] = []
             const added: string[] = []
             const updated: string[] = []
+            const skippedFields: string[] = []
 
             // ------------------------------------------------------------
-            // Build Framer CMS items
+            // Set a field based on the ACTUAL Framer field type
+            // ------------------------------------------------------------
+
+            const setField = (
+                fieldData: Record<string, unknown>,
+                fieldName: string,
+                value: unknown
+            ) => {
+                const field = fieldByName.get(
+                    fieldName.trim().toLowerCase()
+                )
+
+                if (!field) {
+                    return
+                }
+
+                if (value === null || value === undefined) {
+                    return
+                }
+
+                // --------------------------------------------------------
+                // Boolean
+                // --------------------------------------------------------
+
+                if (field.type === "boolean") {
+                    fieldData[field.id] = {
+                        type: "boolean",
+                        value: Boolean(value),
+                    }
+
+                    return
+                }
+
+                // --------------------------------------------------------
+                // String
+                // --------------------------------------------------------
+
+                if (field.type === "string") {
+                    const stringValue = asString(value)
+
+                    if (!stringValue) {
+                        return
+                    }
+
+                    fieldData[field.id] = {
+                        type: "string",
+                        value: stringValue,
+                    }
+
+                    return
+                }
+
+                // --------------------------------------------------------
+                // Link
+                // --------------------------------------------------------
+
+                if (field.type === "link") {
+                    const stringValue = asString(value)
+
+                    if (!stringValue) {
+                        return
+                    }
+
+                    fieldData[field.id] = {
+                        type: "link",
+                        value: stringValue,
+                    }
+
+                    return
+                }
+
+                // --------------------------------------------------------
+                // Image
+                // --------------------------------------------------------
+
+                if (field.type === "image") {
+                    const stringValue = asString(value)
+
+                    if (!stringValue) {
+                        return
+                    }
+
+                    fieldData[field.id] = {
+                        type: "image",
+                        value: stringValue,
+                    }
+
+                    return
+                }
+
+                // --------------------------------------------------------
+                // ENUM
+                //
+                // Framer enum fields require the ID of one of their
+                // predefined cases.
+                // --------------------------------------------------------
+
+                if (field.type === "enum") {
+                    const stringValue = asString(value)
+
+                    if (!stringValue) {
+                        return
+                    }
+
+                    const cases = Array.isArray(field.cases)
+                        ? field.cases
+                        : []
+
+                    const matchingCase = cases.find(
+                        (enumCase: any) => {
+                            const caseName =
+                                asString(enumCase?.name)
+
+                            const caseId =
+                                asString(enumCase?.id)
+
+                            return (
+                                caseId === stringValue ||
+                                caseName?.toLowerCase() ===
+                                    stringValue.toLowerCase()
+                            )
+                        }
+                    )
+
+                    if (!matchingCase) {
+                        skippedFields.push(
+                            `${fieldName}: ${stringValue}`
+                        )
+                        return
+                    }
+
+                    fieldData[field.id] = {
+                        type: "enum",
+                        value: matchingCase.id,
+                    }
+
+                    return
+                }
+
+                // --------------------------------------------------------
+                // Unsupported field type
+                // --------------------------------------------------------
+
+                skippedFields.push(
+                    `${fieldName}: unsupported Framer type "${field.type}"`
+                )
+            }
+
+            // ------------------------------------------------------------
+            // Build items
             // ------------------------------------------------------------
 
             const itemsToSync = brands
-                .filter((brand) => {
-                    return (
+                .filter(
+                    (brand) =>
                         hasValue(brand.slug) &&
                         hasValue(brand.name)
-                    )
-                })
+                )
                 .map((brand) => {
                     const slug = asString(brand.slug)!
-                    const name = asString(brand.name)!
-
                     const existingItem =
                         existingBySlug.get(slug)
 
                     const fieldData: Record<string, unknown> = {}
 
                     // ----------------------------------------------------
-                    // Helper
-                    // ----------------------------------------------------
-
-                    const setField = (
-                        fieldName: string,
-                        type:
-                            | "string"
-                            | "image"
-                            | "link"
-                            | "boolean",
-                        value: unknown
-                    ) => {
-                        const field = fieldByName.get(
-                            fieldName.toLowerCase()
-                        )
-
-                        if (!field) {
-                            return
-                        }
-
-                        if (type === "boolean") {
-                            fieldData[field.id] = {
-                                type: "boolean",
-                                value: Boolean(value),
-                            }
-
-                            return
-                        }
-
-                        const stringValue = asString(value)
-
-                        if (!stringValue) {
-                            return
-                        }
-
-                        fieldData[field.id] = {
-                            type,
-                            value: stringValue,
-                        }
-                    }
-
-                    // ----------------------------------------------------
-                    // Brand fields
+                    // Brand Name
                     // ----------------------------------------------------
 
                     setField(
+                        fieldData,
                         "Brand Name",
-                        "string",
                         brand.name
                     )
 
+                    // ----------------------------------------------------
+                    // Status
+                    // ----------------------------------------------------
+
                     setField(
+                        fieldData,
                         "Status",
-                        "string",
                         brand.status
                     )
 
+                    // ----------------------------------------------------
+                    // Category
+                    // ----------------------------------------------------
+
                     setField(
+                        fieldData,
                         "Category",
-                        "string",
                         brand.category
                     )
 
+                    // ----------------------------------------------------
+                    // Description
+                    // ----------------------------------------------------
+
                     setField(
+                        fieldData,
                         "Description",
-                        "string",
                         brand.description
                     )
 
+                    // ----------------------------------------------------
+                    // Logo
+                    // ----------------------------------------------------
+
                     setField(
+                        fieldData,
                         "Logo",
-                        "image",
                         brand.logo_url
                     )
 
+                    // ----------------------------------------------------
+                    // Products
+                    // ----------------------------------------------------
+
                     setField(
+                        fieldData,
                         "Product 1",
-                        "image",
                         brand.image_1_url
                     )
 
                     setField(
+                        fieldData,
                         "Product 2",
-                        "image",
                         brand.image_2_url
                     )
 
                     setField(
+                        fieldData,
                         "Product 3",
-                        "image",
                         brand.image_3_url
                     )
 
+                    // ----------------------------------------------------
+                    // Links
+                    // ----------------------------------------------------
+
                     setField(
+                        fieldData,
                         "Website URL",
-                        "link",
                         brand.website
                     )
 
                     setField(
+                        fieldData,
                         "Instagram",
-                        "link",
                         brand.instagram
                     )
 
+                    // ----------------------------------------------------
+                    // Country
+                    // ----------------------------------------------------
+
                     setField(
+                        fieldData,
                         "Country",
-                        "string",
                         brand.country
                     )
 
+                    // ----------------------------------------------------
+                    // Featured
+                    // ----------------------------------------------------
+
                     setField(
+                        fieldData,
                         "Featured",
-                        "boolean",
                         brand.featured ?? false
                     )
 
                     // ----------------------------------------------------
-                    // Create/update item
+                    // Create/update CMS item
                     // ----------------------------------------------------
 
                     const item: Record<string, unknown> = {
@@ -331,7 +458,7 @@ export default {
                 })
 
             // ------------------------------------------------------------
-            // Sync to Framer
+            // Send to Framer
             // ------------------------------------------------------------
 
             if (itemsToSync.length > 0) {
@@ -339,7 +466,7 @@ export default {
             }
 
             // ------------------------------------------------------------
-            // Existing Framer items that were not in Supabase
+            // Existing Framer items not present in Supabase
             // ------------------------------------------------------------
 
             const unchangedExistingItems = existingItems
@@ -364,8 +491,7 @@ export default {
                 added,
                 updated,
                 unchangedExistingItems,
-                note:
-                    "De CMS-items zijn toegevoegd of bijgewerkt. Publicatie naar de live site gebeurt niet automatisch.",
+                skippedFields,
             })
         } catch (error) {
             console.error("Brand sync failed:", error)
