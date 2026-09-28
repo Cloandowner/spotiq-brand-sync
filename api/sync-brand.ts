@@ -2,6 +2,16 @@ import { connect } from "framer-api"
 
 type Brand = Record<string, unknown>
 
+type Env = {
+    SYNC_SECRET?: string
+    FRAMER_PROJECT_URL?: string
+    FRAMER_API_KEY?: string
+    SUPABASE_URL?: string
+    SUPABASE_SERVICE_ROLE_KEY?: string
+}
+
+const env = (globalThis as any).process?.env as Env | undefined
+
 function hasValue(value: unknown): value is string {
     return typeof value === "string" && value.trim().length > 0
 }
@@ -26,10 +36,19 @@ export default {
 
         try {
             // ------------------------------------------------------------
-            // 1. Security
+            // Environment variables
             // ------------------------------------------------------------
 
-            const syncSecret = process.env.SYNC_SECRET
+            const syncSecret = env?.SYNC_SECRET
+            const projectUrl = env?.FRAMER_PROJECT_URL
+            const framerApiKey = env?.FRAMER_API_KEY
+            const supabaseUrl = env?.SUPABASE_URL
+            const supabaseServiceKey =
+                env?.SUPABASE_SERVICE_ROLE_KEY
+
+            // ------------------------------------------------------------
+            // Security
+            // ------------------------------------------------------------
 
             if (!syncSecret) {
                 throw new Error("SYNC_SECRET ontbreekt")
@@ -46,14 +65,8 @@ export default {
             }
 
             // ------------------------------------------------------------
-            // 2. Environment variables
+            // Check environment variables
             // ------------------------------------------------------------
-
-            const projectUrl = process.env.FRAMER_PROJECT_URL
-            const framerApiKey = process.env.FRAMER_API_KEY
-            const supabaseUrl = process.env.SUPABASE_URL
-            const supabaseServiceKey =
-                process.env.SUPABASE_SERVICE_ROLE_KEY
 
             if (!projectUrl) {
                 throw new Error("FRAMER_PROJECT_URL ontbreekt")
@@ -74,7 +87,7 @@ export default {
             }
 
             // ------------------------------------------------------------
-            // 3. Get brands from Supabase
+            // Get brands from Supabase
             // ------------------------------------------------------------
 
             const brandsResponse = await fetch(
@@ -98,21 +111,24 @@ export default {
             const brands = (await brandsResponse.json()) as Brand[]
 
             // ------------------------------------------------------------
-            // 4. Connect to Framer
+            // Connect to Framer
             // ------------------------------------------------------------
 
-            framer = await connect(projectUrl, framerApiKey)
+            framer = await connect(
+                projectUrl,
+                framerApiKey
+            )
 
             // ------------------------------------------------------------
-            // 5. Find Discover Brands collection
+            // Find Discover Brands collection
             // ------------------------------------------------------------
 
             const collections = await framer.getCollections()
 
             const collection = collections.find(
                 (item: any) =>
-                    item.name?.toLowerCase() ===
-                    "discover brands".toLowerCase()
+                    item?.name?.trim().toLowerCase() ===
+                    "discover brands"
             )
 
             if (!collection) {
@@ -122,7 +138,7 @@ export default {
             }
 
             // ------------------------------------------------------------
-            // 6. Get fields and existing CMS items
+            // Get Framer fields and existing items
             // ------------------------------------------------------------
 
             const fields = await collection.getFields()
@@ -148,43 +164,39 @@ export default {
             }
 
             // ------------------------------------------------------------
-            // 7. Counters
+            // Results
             // ------------------------------------------------------------
 
             const synced: string[] = []
             const added: string[] = []
             const updated: string[] = []
-            const skipped: string[] = []
 
             // ------------------------------------------------------------
-            // 8. Convert Supabase brands to Framer CMS items
+            // Build Framer CMS items
             // ------------------------------------------------------------
 
             const itemsToSync = brands
                 .filter((brand) => {
-                    const slug = asString(brand.slug)
-                    const name = asString(brand.name)
-
-                    if (!slug || !name) {
-                        return false
-                    }
-
-                    return true
+                    return (
+                        hasValue(brand.slug) &&
+                        hasValue(brand.name)
+                    )
                 })
                 .map((brand) => {
                     const slug = asString(brand.slug)!
                     const name = asString(brand.name)!
 
-                    const existingItem = existingBySlug.get(slug)
+                    const existingItem =
+                        existingBySlug.get(slug)
 
                     const fieldData: Record<string, unknown> = {}
 
                     // ----------------------------------------------------
-                    // Helper to safely set a Framer field
+                    // Helper
                     // ----------------------------------------------------
 
                     const setField = (
-                        framerFieldName: string,
+                        fieldName: string,
                         type:
                             | "string"
                             | "image"
@@ -193,18 +205,16 @@ export default {
                         value: unknown
                     ) => {
                         const field = fieldByName.get(
-                            framerFieldName.trim().toLowerCase()
+                            fieldName.toLowerCase()
                         )
 
-                        // Field does not exist in Framer.
-                        // Ignore it instead of breaking the whole sync.
                         if (!field) {
                             return
                         }
 
                         if (type === "boolean") {
                             fieldData[field.id] = {
-                                type,
+                                type: "boolean",
                                 value: Boolean(value),
                             }
 
@@ -224,13 +234,13 @@ export default {
                     }
 
                     // ----------------------------------------------------
-                    // Framer CMS fields
+                    // Brand fields
                     // ----------------------------------------------------
 
                     setField(
                         "Brand Name",
                         "string",
-                        name
+                        brand.name
                     )
 
                     setField(
@@ -300,11 +310,7 @@ export default {
                     )
 
                     // ----------------------------------------------------
-                    // Keep slug as the Framer CMS item slug.
-                    //
-                    // For existing items we include the ID so Framer
-                    // updates the existing item instead of creating a
-                    // duplicate.
+                    // Create/update item
                     // ----------------------------------------------------
 
                     const item: Record<string, unknown> = {
@@ -325,7 +331,7 @@ export default {
                 })
 
             // ------------------------------------------------------------
-            // 9. Send items to Framer
+            // Sync to Framer
             // ------------------------------------------------------------
 
             if (itemsToSync.length > 0) {
@@ -333,7 +339,7 @@ export default {
             }
 
             // ------------------------------------------------------------
-            // 10. Find existing Framer items that were not in Supabase
+            // Existing Framer items that were not in Supabase
             // ------------------------------------------------------------
 
             const unchangedExistingItems = existingItems
@@ -345,7 +351,7 @@ export default {
                 .filter(Boolean)
 
             // ------------------------------------------------------------
-            // 11. Return result
+            // Success
             // ------------------------------------------------------------
 
             return Response.json({
@@ -358,7 +364,6 @@ export default {
                 added,
                 updated,
                 unchangedExistingItems,
-                skipped,
                 note:
                     "De CMS-items zijn toegevoegd of bijgewerkt. Publicatie naar de live site gebeurt niet automatisch.",
             })
@@ -378,10 +383,10 @@ export default {
         } finally {
             try {
                 await framer?.disconnect()
-            } catch (disconnectError) {
+            } catch (error) {
                 console.error(
                     "Framer disconnect failed:",
-                    disconnectError
+                    error
                 )
             }
         }
