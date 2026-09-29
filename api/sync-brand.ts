@@ -20,6 +20,32 @@ function asString(value: unknown): string | undefined {
     return hasValue(value) ? value.trim() : undefined
 }
 
+function isValidImageUrl(value: unknown): boolean {
+    if (!hasValue(value)) {
+        return false
+    }
+
+    try {
+        const url = new URL(value)
+
+        if (url.protocol !== "https:" && url.protocol !== "http:") {
+            return false
+        }
+
+        // Ignore placeholder/demo URLs
+        if (
+            url.hostname === "example.com" ||
+            url.hostname === "www.example.com"
+        ) {
+            return false
+        }
+
+        return true
+    } catch {
+        return false
+    }
+}
+
 export default {
     async fetch(request: Request) {
         if (request.method !== "POST") {
@@ -255,9 +281,6 @@ export default {
 
                 // --------------------------------------------------------
                 // ENUM
-                //
-                // Framer enum fields require the ID of one of their
-                // predefined cases.
                 // --------------------------------------------------------
 
                 if (field.type === "enum") {
@@ -291,6 +314,7 @@ export default {
                         skippedFields.push(
                             `${fieldName}: ${stringValue}`
                         )
+
                         return
                     }
 
@@ -368,93 +392,56 @@ export default {
                         brand.description
                     )
 
-                    // ------------------------------------------------------------
-// Images
-// ------------------------------------------------------------
-
-const isValidImageUrl = (value: unknown) => {
-    if (!hasValue(value)) {
-        return false
-    }
-
-    try {
-        const url = new URL(value)
-
-        if (url.protocol !== "https:" && url.protocol !== "http:") {
-            return false
-        }
-
-        // Ignore placeholder/demo URLs
-        if (
-            url.hostname === "example.com" ||
-            url.hostname === "www.example.com"
-        ) {
-            return false
-        }
-
-        return true
-    } catch {
-        return false
-    }
-}
-
-if (isValidImageUrl(brand.logo_url)) {
-    setField(
-        fieldData,
-        "Logo",
-        brand.logo_url
-    )
-}
-
-if (isValidImageUrl(brand.image_1_url)) {
-    setField(
-        fieldData,
-        "Product 1",
-        brand.image_1_url
-    )
-}
-
-if (isValidImageUrl(brand.image_2_url)) {
-    setField(
-        fieldData,
-        "Product 2",
-        brand.image_2_url
-    )
-}
-
-if (isValidImageUrl(brand.image_3_url)) {
-    setField(
-        fieldData,
-        "Product 3",
-        brand.image_3_url
-    )
-}
-                    )
-
                     // ----------------------------------------------------
-                    // Products
+                    // Logo
                     // ----------------------------------------------------
 
-                    setField(
-                        fieldData,
-                        "Product 1",
-                        brand.image_1_url
-                    )
-
-                    setField(
-                        fieldData,
-                        "Product 2",
-                        brand.image_2_url
-                    )
-
-                    setField(
-                        fieldData,
-                        "Product 3",
-                        brand.image_3_url
-                    )
+                    if (isValidImageUrl(brand.logo_url)) {
+                        setField(
+                            fieldData,
+                            "Logo",
+                            brand.logo_url
+                        )
+                    }
 
                     // ----------------------------------------------------
-                    // Links
+                    // Product 1
+                    // ----------------------------------------------------
+
+                    if (isValidImageUrl(brand.image_1_url)) {
+                        setField(
+                            fieldData,
+                            "Product 1",
+                            brand.image_1_url
+                        )
+                    }
+
+                    // ----------------------------------------------------
+                    // Product 2
+                    // ----------------------------------------------------
+
+                    if (isValidImageUrl(brand.image_2_url)) {
+                        setField(
+                            fieldData,
+                            "Product 2",
+                            brand.image_2_url
+                        )
+                    }
+
+                    // ----------------------------------------------------
+                    // Product 3
+                    // ----------------------------------------------------
+
+                    if (isValidImageUrl(brand.image_3_url)) {
+                        setField(
+                            fieldData,
+                            "Product 3",
+                            brand.image_3_url
+                        )
+                    }
+
+                    // ----------------------------------------------------
+                    // Website
                     // ----------------------------------------------------
 
                     setField(
@@ -462,6 +449,10 @@ if (isValidImageUrl(brand.image_3_url)) {
                         "Website URL",
                         brand.website
                     )
+
+                    // ----------------------------------------------------
+                    // Instagram
+                    // ----------------------------------------------------
 
                     setField(
                         fieldData,
