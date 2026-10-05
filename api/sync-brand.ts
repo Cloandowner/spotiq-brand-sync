@@ -28,7 +28,10 @@ function isValidImageUrl(value: unknown): boolean {
     try {
         const url = new URL(value)
 
-        if (url.protocol !== "https:" && url.protocol !== "http:") {
+        if (
+            url.protocol !== "https:" &&
+            url.protocol !== "http:"
+        ) {
             return false
         }
 
@@ -76,7 +79,10 @@ export default {
                 throw new Error("SYNC_SECRET ontbreekt")
             }
 
-            if (request.headers.get("x-sync-secret") !== syncSecret) {
+            if (
+                request.headers.get("x-sync-secret") !==
+                syncSecret
+            ) {
                 return Response.json(
                     {
                         success: false,
@@ -87,15 +93,21 @@ export default {
             }
 
             if (!projectUrl) {
-                throw new Error("FRAMER_PROJECT_URL ontbreekt")
+                throw new Error(
+                    "FRAMER_PROJECT_URL ontbreekt"
+                )
             }
 
             if (!framerApiKey) {
-                throw new Error("FRAMER_API_KEY ontbreekt")
+                throw new Error(
+                    "FRAMER_API_KEY ontbreekt"
+                )
             }
 
             if (!supabaseUrl) {
-                throw new Error("SUPABASE_URL ontbreekt")
+                throw new Error(
+                    "SUPABASE_URL ontbreekt"
+                )
             }
 
             if (!supabaseServiceKey) {
@@ -113,7 +125,8 @@ export default {
                 {
                     headers: {
                         apikey: supabaseServiceKey,
-                        Authorization: `Bearer ${supabaseServiceKey}`,
+                        Authorization:
+                            `Bearer ${supabaseServiceKey}`,
                     },
                 }
             )
@@ -124,7 +137,8 @@ export default {
                 )
             }
 
-            const brands = (await brandsResponse.json()) as Brand[]
+            const brands =
+                (await brandsResponse.json()) as Brand[]
 
             // ------------------------------------------------------------
             // Connect to Framer
@@ -139,13 +153,17 @@ export default {
             // Find collection
             // ------------------------------------------------------------
 
-            const collections = await framer.getCollections()
+            const collections =
+                await framer.getCollections()
 
-            const collection = collections.find(
-                (item: any) =>
-                    item?.name?.trim().toLowerCase() ===
-                    "discover brands"
-            )
+            const collection =
+                collections.find(
+                    (item: any) =>
+                        item?.name
+                            ?.trim()
+                            .toLowerCase() ===
+                        "discover brands"
+                )
 
             if (!collection) {
                 throw new Error(
@@ -157,25 +175,39 @@ export default {
             // Get fields and existing items
             // ------------------------------------------------------------
 
-            const fields = await collection.getFields()
-            const existingItems = await collection.getItems()
+            const fields =
+                await collection.getFields()
 
-            const fieldByName = new Map<string, any>()
+            const existingItems =
+                await collection.getItems()
+
+            const fieldByName =
+                new Map<string, any>()
 
             for (const field of fields) {
                 if (field?.name) {
                     fieldByName.set(
-                        field.name.trim().toLowerCase(),
+                        field.name
+                            .trim()
+                            .toLowerCase(),
                         field
                     )
                 }
             }
 
-            const existingBySlug = new Map<string, any>()
+            const existingBySlug =
+                new Map<string, any>()
 
-            for (const item of existingItems) {
-                if (hasValue(item?.slug)) {
-                    existingBySlug.set(item.slug, item)
+            for (
+                const item of existingItems
+            ) {
+                if (
+                    hasValue(item?.slug)
+                ) {
+                    existingBySlug.set(
+                        item.slug,
+                        item
+                    )
                 }
             }
 
@@ -193,19 +225,28 @@ export default {
             // ------------------------------------------------------------
 
             const setField = (
-                fieldData: Record<string, unknown>,
+                fieldData: Record<
+                    string,
+                    unknown
+                >,
                 fieldName: string,
                 value: unknown
             ) => {
-                const field = fieldByName.get(
-                    fieldName.trim().toLowerCase()
-                )
+                const field =
+                    fieldByName.get(
+                        fieldName
+                            .trim()
+                            .toLowerCase()
+                    )
 
                 if (!field) {
                     return
                 }
 
-                if (value === null || value === undefined) {
+                if (
+                    value === null ||
+                    value === undefined
+                ) {
                     return
                 }
 
@@ -213,10 +254,15 @@ export default {
                 // Boolean
                 // --------------------------------------------------------
 
-                if (field.type === "boolean") {
+                if (
+                    field.type ===
+                    "boolean"
+                ) {
                     fieldData[field.id] = {
                         type: "boolean",
-                        value: Boolean(value),
+                        value: Boolean(
+                            value
+                        ),
                     }
 
                     return
@@ -226,8 +272,12 @@ export default {
                 // String
                 // --------------------------------------------------------
 
-                if (field.type === "string") {
-                    const stringValue = asString(value)
+                if (
+                    field.type ===
+                    "string"
+                ) {
+                    const stringValue =
+                        asString(value)
 
                     if (!stringValue) {
                         return
@@ -245,8 +295,12 @@ export default {
                 // Link
                 // --------------------------------------------------------
 
-                if (field.type === "link") {
-                    const stringValue = asString(value)
+                if (
+                    field.type ===
+                    "link"
+                ) {
+                    const stringValue =
+                        asString(value)
 
                     if (!stringValue) {
                         return
@@ -264,8 +318,12 @@ export default {
                 // Image
                 // --------------------------------------------------------
 
-                if (field.type === "image") {
-                    const stringValue = asString(value)
+                if (
+                    field.type ===
+                    "image"
+                ) {
+                    const stringValue =
+                        asString(value)
 
                     if (!stringValue) {
                         return
@@ -283,34 +341,52 @@ export default {
                 // ENUM
                 // --------------------------------------------------------
 
-                if (field.type === "enum") {
-                    const stringValue = asString(value)
+                if (
+                    field.type ===
+                    "enum"
+                ) {
+                    const stringValue =
+                        asString(value)
 
                     if (!stringValue) {
                         return
                     }
 
-                    const cases = Array.isArray(field.cases)
-                        ? field.cases
-                        : []
+                    const cases =
+                        Array.isArray(
+                            field.cases
+                        )
+                            ? field.cases
+                            : []
 
-                    const matchingCase = cases.find(
-                        (enumCase: any) => {
-                            const caseName =
-                                asString(enumCase?.name)
+                    const matchingCase =
+                        cases.find(
+                            (
+                                enumCase: any
+                            ) => {
+                                const caseName =
+                                    asString(
+                                        enumCase?.name
+                                    )
 
-                            const caseId =
-                                asString(enumCase?.id)
+                                const caseId =
+                                    asString(
+                                        enumCase?.id
+                                    )
 
-                            return (
-                                caseId === stringValue ||
-                                caseName?.toLowerCase() ===
-                                    stringValue.toLowerCase()
-                            )
-                        }
-                    )
+                                return (
+                                    caseId ===
+                                        stringValue ||
+                                    caseName
+                                        ?.toLowerCase() ===
+                                        stringValue.toLowerCase()
+                                )
+                            }
+                        )
 
-                    if (!matchingCase) {
+                    if (
+                        !matchingCase
+                    ) {
                         skippedFields.push(
                             `${fieldName}: ${stringValue}`
                         )
@@ -320,7 +396,8 @@ export default {
 
                     fieldData[field.id] = {
                         type: "enum",
-                        value: matchingCase.id,
+                        value:
+                            matchingCase.id,
                     }
 
                     return
@@ -339,187 +416,291 @@ export default {
             // Build items
             // ------------------------------------------------------------
 
-            const itemsToSync = brands
-                .filter(
-                    (brand) =>
-                        hasValue(brand.slug) &&
-                        hasValue(brand.name)
-                )
-                .map((brand) => {
-                    const slug = asString(brand.slug)!
-                    const existingItem =
-                        existingBySlug.get(slug)
-
-                    const fieldData: Record<string, unknown> = {}
-
-                    // ----------------------------------------------------
-                    // Brand Name
-                    // ----------------------------------------------------
-
-                    setField(
-                        fieldData,
-                        "Brand Name",
-                        brand.name
+            const itemsToSync =
+                brands
+                    .filter(
+                        (brand) =>
+                            hasValue(
+                                brand.slug
+                            ) &&
+                            hasValue(
+                                brand.name
+                            )
                     )
+                    .map((brand) => {
+                        const slug =
+                            asString(
+                                brand.slug
+                            )!
 
-                    // ----------------------------------------------------
-                    // Status
-                    // ----------------------------------------------------
+                        const existingItem =
+                            existingBySlug.get(
+                                slug
+                            )
 
-                    setField(
-                        fieldData,
-                        "Status",
-                        brand.status
-                    )
+                        const fieldData:
+                            Record<
+                                string,
+                                unknown
+                            > = {}
 
-                    // ----------------------------------------------------
-                    // Category
-                    // ----------------------------------------------------
+                        // ----------------------------------------------------
+                        // Brand Name
+                        // ----------------------------------------------------
 
-                    setField(
-                        fieldData,
-                        "Category",
-                        brand.category
-                    )
-
-                    // ----------------------------------------------------
-                    // Description
-                    // ----------------------------------------------------
-
-                    setField(
-                        fieldData,
-                        "Description",
-                        brand.description
-                    )
-
-                    // ----------------------------------------------------
-                    // Logo
-                    // ----------------------------------------------------
-
-                    if (isValidImageUrl(brand.logo_url)) {
                         setField(
                             fieldData,
-                            "Logo",
-                            brand.logo_url
+                            "Brand Name",
+                            brand.name
                         )
-                    }
 
-                    // ----------------------------------------------------
-                    // Product 1
-                    // ----------------------------------------------------
+                        // ----------------------------------------------------
+                        // Status
+                        // ----------------------------------------------------
 
-                    if (isValidImageUrl(brand.image_1_url)) {
                         setField(
                             fieldData,
-                            "Product 1",
-                            brand.image_1_url
+                            "Status",
+                            brand.status
                         )
-                    }
 
-                    // ----------------------------------------------------
-                    // Product 2
-                    // ----------------------------------------------------
+                        // ----------------------------------------------------
+                        // Category
+                        // ----------------------------------------------------
 
-                    if (isValidImageUrl(brand.image_2_url)) {
                         setField(
                             fieldData,
-                            "Product 2",
-                            brand.image_2_url
+                            "Category",
+                            brand.category
                         )
-                    }
 
-                    // ----------------------------------------------------
-                    // Product 3
-                    // ----------------------------------------------------
+                        // ----------------------------------------------------
+                        // Description
+                        // ----------------------------------------------------
 
-                    if (isValidImageUrl(brand.image_3_url)) {
                         setField(
                             fieldData,
-                            "Product 3",
-                            brand.image_3_url
+                            "Description",
+                            brand.description
                         )
-                    }
 
-                    // ----------------------------------------------------
-                    // Website
-                    // ----------------------------------------------------
+                        // ----------------------------------------------------
+                        // Logo
+                        // ----------------------------------------------------
 
-                    setField(
-                        fieldData,
-                        "Website URL",
-                        brand.website
-                    )
+                        if (
+                            isValidImageUrl(
+                                brand.logo_url
+                            )
+                        ) {
+                            setField(
+                                fieldData,
+                                "Logo",
+                                brand.logo_url
+                            )
+                        }
 
-                    // ----------------------------------------------------
-                    // Instagram
-                    // ----------------------------------------------------
+                        // ----------------------------------------------------
+                        // Product 1
+                        // ----------------------------------------------------
 
-                    setField(
-                        fieldData,
-                        "Instagram",
-                        brand.instagram
-                    )
+                        if (
+                            isValidImageUrl(
+                                brand.image_1_url
+                            )
+                        ) {
+                            setField(
+                                fieldData,
+                                "Product 1",
+                                brand.image_1_url
+                            )
+                        }
 
-                    // ----------------------------------------------------
-                    // Country
-                    // ----------------------------------------------------
+                        // ----------------------------------------------------
+                        // Product 2
+                        // ----------------------------------------------------
 
-                    setField(
-                        fieldData,
-                        "Country",
-                        brand.country
-                    )
+                        if (
+                            isValidImageUrl(
+                                brand.image_2_url
+                            )
+                        ) {
+                            setField(
+                                fieldData,
+                                "Product 2",
+                                brand.image_2_url
+                            )
+                        }
 
-                    // ----------------------------------------------------
-                    // Featured
-                    // ----------------------------------------------------
+                        // ----------------------------------------------------
+                        // Product 3
+                        // ----------------------------------------------------
 
-                    setField(
-                        fieldData,
-                        "Featured",
-                        brand.featured ?? false
-                    )
+                        if (
+                            isValidImageUrl(
+                                brand.image_3_url
+                            )
+                        ) {
+                            setField(
+                                fieldData,
+                                "Product 3",
+                                brand.image_3_url
+                            )
+                        }
 
-                    // ----------------------------------------------------
-                    // Create/update CMS item
-                    // ----------------------------------------------------
+                        // ----------------------------------------------------
+                        // Product 4 - OPTIONAL
+                        // ----------------------------------------------------
 
-                    const item: Record<string, unknown> = {
-                        slug,
-                        fieldData,
-                    }
+                        if (
+                            isValidImageUrl(
+                                brand.image_4_url
+                            )
+                        ) {
+                            setField(
+                                fieldData,
+                                "Product 4",
+                                brand.image_4_url
+                            )
+                        }
 
-                    if (existingItem?.id) {
-                        item.id = existingItem.id
-                        updated.push(slug)
-                    } else {
-                        added.push(slug)
-                    }
+                        // ----------------------------------------------------
+                        // Product 5 - OPTIONAL
+                        // ----------------------------------------------------
 
-                    synced.push(slug)
+                        if (
+                            isValidImageUrl(
+                                brand.image_5_url
+                            )
+                        ) {
+                            setField(
+                                fieldData,
+                                "Product 5",
+                                brand.image_5_url
+                            )
+                        }
 
-                    return item
-                })
+                        // ----------------------------------------------------
+                        // Product 6 - OPTIONAL
+                        // ----------------------------------------------------
+
+                        if (
+                            isValidImageUrl(
+                                brand.image_6_url
+                            )
+                        ) {
+                            setField(
+                                fieldData,
+                                "Product 6",
+                                brand.image_6_url
+                            )
+                        }
+
+                        // ----------------------------------------------------
+                        // Website
+                        // ----------------------------------------------------
+
+                        setField(
+                            fieldData,
+                            "Website URL",
+                            brand.website
+                        )
+
+                        // ----------------------------------------------------
+                        // Instagram
+                        // ----------------------------------------------------
+
+                        setField(
+                            fieldData,
+                            "Instagram",
+                            brand.instagram
+                        )
+
+                        // ----------------------------------------------------
+                        // Country
+                        // ----------------------------------------------------
+
+                        setField(
+                            fieldData,
+                            "Country",
+                            brand.country
+                        )
+
+                        // ----------------------------------------------------
+                        // Featured
+                        // ----------------------------------------------------
+
+                        setField(
+                            fieldData,
+                            "Featured",
+                            brand.featured ??
+                                false
+                        )
+
+                        // ----------------------------------------------------
+                        // Create/update CMS item
+                        // ----------------------------------------------------
+
+                        const item: Record<
+                            string,
+                            unknown
+                        > = {
+                            slug,
+                            fieldData,
+                        }
+
+                        if (
+                            existingItem?.id
+                        ) {
+                            item.id =
+                                existingItem.id
+
+                            updated.push(
+                                slug
+                            )
+                        } else {
+                            added.push(
+                                slug
+                            )
+                        }
+
+                        synced.push(
+                            slug
+                        )
+
+                        return item
+                    })
 
             // ------------------------------------------------------------
             // Send to Framer
             // ------------------------------------------------------------
 
-            if (itemsToSync.length > 0) {
-                await collection.addItems(itemsToSync)
+            if (
+                itemsToSync.length >
+                0
+            ) {
+                await collection.addItems(
+                    itemsToSync
+                )
             }
 
             // ------------------------------------------------------------
             // Existing Framer items not present in Supabase
             // ------------------------------------------------------------
 
-            const unchangedExistingItems = existingItems
-                .filter(
-                    (item: any) =>
-                        !synced.includes(item.slug)
-                )
-                .map((item: any) => item.slug)
-                .filter(Boolean)
+            const unchangedExistingItems =
+                existingItems
+                    .filter(
+                        (item: any) =>
+                            !synced.includes(
+                                item.slug
+                            )
+                    )
+                    .map(
+                        (item: any) =>
+                            item.slug
+                    )
+                    .filter(Boolean)
 
             // ------------------------------------------------------------
             // Success
@@ -529,16 +710,22 @@ export default {
                 success: true,
                 message:
                     "Supabase brands zijn naar Framer gesynchroniseerd.",
-                collection: "Discover Brands",
-                supabaseBrands: brands.length,
-                synced: synced.length,
+                collection:
+                    "Discover Brands",
+                supabaseBrands:
+                    brands.length,
+                synced:
+                    synced.length,
                 added,
                 updated,
                 unchangedExistingItems,
                 skippedFields,
             })
         } catch (error) {
-            console.error("Brand sync failed:", error)
+            console.error(
+                "Brand sync failed:",
+                error
+            )
 
             return Response.json(
                 {
